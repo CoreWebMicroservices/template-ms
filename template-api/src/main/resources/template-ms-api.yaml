@@ -1,0 +1,449 @@
+openapi: 3.0.3
+info:
+  title: CoreMs Template Service API
+  description: |
+    The Template Service API provides centralized management and rendering of HTML templates.
+    Templates are used by communication-ms for emails/SMS, document-ms for PDF generation,
+    and any other service requiring dynamic HTML content.
+    
+    **Key Features:**
+    - Template CRUD operations (admin only)
+    - Template rendering with variable substitution
+    - Support for conditionals and iteration (Handlebars syntax)
+    - Template validation and parameter extraction
+    - Search and filtering capabilities
+  version: 1.0.0
+
+servers:
+  - url: /
+    description: Default server
+
+tags:
+  - name: Templates
+    description: Template management operations
+  - name: Rendering
+    description: Template rendering operations
+
+x-common-error-responses: &common-error-responses
+  '400':
+    $ref: '.gen/common-api.yaml#/components/responses/ValidationError'
+  '401':
+    $ref: '.gen/common-api.yaml#/components/responses/UnauthorizedError'
+  '403':
+    $ref: '.gen/common-api.yaml#/components/responses/ForbiddenError'
+  '404':
+    $ref: '.gen/common-api.yaml#/components/responses/NotFoundError'
+  '500':
+    $ref: '.gen/common-api.yaml#/components/responses/InternalServerError'
+
+security:
+  - bearerAuth: []
+
+paths:
+
+  /api/templates:
+    get:
+      tags:
+        - Templates
+      summary: List and search templates
+      description: |
+        Retrieve a paginated list of templates with optional filtering and search.
+        Supports filtering by category and searching by name or description.
+      operationId: listTemplates
+      parameters:
+        - $ref: '.gen/common-api.yaml#/components/parameters/page'
+        - $ref: '.gen/common-api.yaml#/components/parameters/pageSize'
+        - $ref: '.gen/common-api.yaml#/components/parameters/sort'
+        - $ref: '.gen/common-api.yaml#/components/parameters/search'
+        - $ref: '.gen/common-api.yaml#/components/parameters/filter'
+      responses:
+        '200':
+          description: Templates retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplatePagedResponse'
+        <<: *common-error-responses
+
+    post:
+      tags:
+        - Templates
+      summary: Create a new template
+      description: |
+        Create a new template. Requires SERVICE_ADMIN role.
+        The template content will be validated for syntax errors.
+      operationId: createTemplate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTemplateRequest'
+      responses:
+        '201':
+          description: Template created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResponse'
+        <<: *common-error-responses
+
+  /api/templates/{templateId}:
+    get:
+      tags:
+        - Templates
+      summary: Get template by ID
+      description: Retrieve a template by its unique template ID
+      operationId: getTemplate
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          description: Unique template identifier
+          schema:
+            type: string
+            example: welcome-email
+      responses:
+        '200':
+          description: Template retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResponse'
+        <<: *common-error-responses
+
+    put:
+      tags:
+        - Templates
+      summary: Update a template
+      description: |
+        Update an existing template. Requires SERVICE_ADMIN role.
+        The template content will be validated for syntax errors.
+      operationId: updateTemplate
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          description: Unique template identifier
+          schema:
+            type: string
+            example: welcome-email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTemplateRequest'
+      responses:
+        '200':
+          description: Template updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateResponse'
+        <<: *common-error-responses
+
+    delete:
+      tags:
+        - Templates
+      summary: Delete a template
+      description: |
+        Soft delete a template. Requires SERVICE_ADMIN role.
+        Deleted templates cannot be rendered.
+      operationId: deleteTemplate
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          description: Unique template identifier
+          schema:
+            type: string
+            example: welcome-email
+      responses:
+        '200':
+          description: Template deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '.gen/common-api.yaml#/components/schemas/SuccessfulResponse'
+        <<: *common-error-responses
+
+
+  /api/templates/{templateId}/render:
+    post:
+      tags:
+        - Rendering
+      summary: Render template with parameters
+      description: |
+        Render a template by substituting variables with provided parameters.
+        Supports complex nested objects, arrays, conditionals, and iteration.
+        Uses POST to support large parameter payloads.
+      operationId: renderTemplate
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          description: Unique template identifier
+          schema:
+            type: string
+            example: welcome-email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RenderTemplateRequest'
+      responses:
+        '200':
+          description: Template rendered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RenderTemplateResponse'
+        <<: *common-error-responses
+
+  /api/templates/{templateId}/metadata:
+    get:
+      tags:
+        - Rendering
+      summary: Get template metadata
+      description: |
+        Retrieve template metadata including required parameters,
+        category, and description without rendering.
+      operationId: getTemplateMetadata
+      parameters:
+        - name: templateId
+          in: path
+          required: true
+          description: Unique template identifier
+          schema:
+            type: string
+            example: welcome-email
+      responses:
+        '200':
+          description: Metadata retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TemplateMetadataResponse'
+        <<: *common-error-responses
+
+
+components:
+  schemas:
+    TemplateCategory:
+      type: string
+      description: Template category for organization and usage
+      default: COMMON
+      enum:
+        - COMMON
+        - EMAIL
+        - SMS
+        - DOCUMENT
+
+    TemplateParamDefinition:
+      type: object
+      properties:
+        required:
+          type: boolean
+          default: false
+          description: Whether this parameter must be provided during rendering
+        type:
+          type: string
+          enum: [string, number, boolean, object, array]
+          default: string
+          description: Expected parameter type
+        pattern:
+          type: string
+          description: Regex pattern for validation (applies to string type only)
+          example: "^https?://.+"
+
+    CreateTemplateRequest:
+      type: object
+      required:
+        - templateId
+        - name
+        - content
+        - category
+      properties:
+        templateId:
+          type: string
+          pattern: '^[a-z0-9-]+$'
+          minLength: 3
+          maxLength: 255
+          description: Unique template identifier (kebab-case)
+          example: welcome-email
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Human-readable template name
+          example: Welcome Email Template
+        description:
+          type: string
+          maxLength: 1000
+          description: Template description
+          example: Sent to new users after registration
+        content:
+          type: string
+          minLength: 1
+          maxLength: 100000
+          description: Template content with Handlebars syntax
+          example: "<html><body>Hello {{userName}}!</body></html>"
+        category:
+          $ref: '#/components/schemas/TemplateCategory'
+        paramSchema:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TemplateParamDefinition'
+          description: |
+            Optional parameter schema for validation.
+            If not provided, all variables in template will be auto-extracted with required=false.
+          example:
+            userName:
+              required: true
+              type: string
+            activationLink:
+              required: true
+              type: string
+              pattern: "^https?://.+"
+
+    UpdateTemplateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          description: Human-readable template name
+        description:
+          type: string
+          maxLength: 1000
+          description: Template description
+        content:
+          type: string
+          minLength: 1
+          maxLength: 100000
+          description: Template content with Handlebars syntax
+        category:
+          $ref: '#/components/schemas/TemplateCategory'
+        paramSchema:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TemplateParamDefinition'
+          description: |
+            Optional parameter schema for validation.
+            If not provided, all variables in template will be auto-extracted with required=false.
+
+    RenderTemplateRequest:
+      type: object
+      required:
+        - params
+      properties:
+        params:
+          type: object
+          additionalProperties: true
+          description: Parameters to substitute in template
+          example:
+            userName: John Doe
+            activationLink: https://example.com/activate
+            items:
+              - name: Product A
+                price: 100
+              - name: Product B
+                price: 50
+
+    TemplateResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Internal database ID
+        templateId:
+          type: string
+          description: Unique template identifier
+          example: welcome-email
+        name:
+          type: string
+          description: Human-readable template name
+        description:
+          type: string
+          description: Template description
+        content:
+          type: string
+          description: Template content with Handlebars syntax
+        category:
+          $ref: '#/components/schemas/TemplateCategory'
+        paramSchema:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TemplateParamDefinition'
+          description: |
+            Parameter schema with validation rules.
+            Auto-extracted from template if not explicitly provided during creation.
+          example:
+            userName:
+              required: false
+              type: string
+            activationLink:
+              required: false
+              type: string
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        createdBy:
+          type: string
+          format: uuid
+          description: User ID who created the template
+        updatedBy:
+          type: string
+          format: uuid
+          description: User ID who last updated the template
+
+    RenderTemplateResponse:
+      type: object
+      properties:
+        html:
+          type: string
+          description: Rendered HTML content
+          example: "<html><body>Hello John Doe!</body></html>"
+
+    TemplateMetadataResponse:
+      type: object
+      properties:
+        templateId:
+          type: string
+          description: Unique template identifier
+        name:
+          type: string
+          description: Human-readable template name
+        description:
+          type: string
+          description: Template description
+        category:
+          $ref: '#/components/schemas/TemplateCategory'
+        paramSchema:
+          type: object
+          additionalProperties:
+            $ref: '#/components/schemas/TemplateParamDefinition'
+          description: Parameter schema with validation rules
+
+    TemplatePagedResponse:
+      allOf:
+        - $ref: '.gen/common-api.yaml#/components/schemas/PaginationMeta'
+        - type: object
+          properties:
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/TemplateResponse'
+
+  securitySchemes:
+    bearerAuth:
+      $ref: '.gen/common-api.yaml#/components/securitySchemes/bearerAuth'
