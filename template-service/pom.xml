@@ -14,7 +14,6 @@
     <properties>
         <module.mainClass>com.corems.templatems.app.TemplateServiceApplication</module.mainClass>
         <handlebars.version>4.3.1</handlebars.version>
-        <hypersistence-utils.version>3.8.3</hypersistence-utils.version>
         <jqwik.version>1.9.2</jqwik.version>
     </properties>
 
@@ -22,11 +21,6 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>template-api</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.corems.common</groupId>
-            <artifactId>autoconfig-starter</artifactId>
             <version>${project.version}</version>
         </dependency>
         <dependency>
@@ -48,6 +42,12 @@
             <groupId>com.corems.common</groupId>
             <artifactId>db-utils</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
 
         <dependency>
@@ -92,11 +92,6 @@
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.hypersistence</groupId>
-            <artifactId>hypersistence-utils-hibernate-63</artifactId>
-            <version>${hypersistence-utils.version}</version>
         </dependency>
         <dependency>
             <groupId>com.h2database</groupId>

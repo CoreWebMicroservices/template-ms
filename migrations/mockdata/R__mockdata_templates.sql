@@ -1,9 +1,10 @@
--- Sample templates for testing and demonstration
+-- Sample template for testing and demonstration
 
--- Welcome email template
-INSERT INTO templates (template_id, name, description, content, category, param_schema)
+-- Welcome email template (English)
+INSERT INTO template (template_id, language, name, description, content, category, param_schema)
 VALUES (
     'welcome-email',
+    'en',
     'Welcome Email',
     'Sent to new users after registration',
     '<html>
@@ -19,7 +20,7 @@ VALUES (
     'EMAIL',
     '{"userName": {"required": true, "type": "string"}, "activationLink": {"required": true, "type": "string", "pattern": "^https?://.+"}}'::jsonb
 )
-ON CONFLICT (template_id) DO UPDATE SET
+ON CONFLICT (template_id, language) DO UPDATE SET
     name = EXCLUDED.name,
     description = EXCLUDED.description,
     content = EXCLUDED.content,
@@ -27,10 +28,11 @@ ON CONFLICT (template_id) DO UPDATE SET
     param_schema = EXCLUDED.param_schema,
     updated_at = CURRENT_TIMESTAMP;
 
--- Password reset email template
-INSERT INTO templates (template_id, name, description, content, category, param_schema)
+-- Password reset email template (English)
+INSERT INTO template (template_id, language, name, description, content, category, param_schema)
 VALUES (
     'password-reset-email',
+    'en',
     'Password Reset Email',
     'Sent when user requests password reset',
     '<html>
@@ -48,7 +50,7 @@ VALUES (
     'EMAIL',
     '{"userName": {"required": true, "type": "string"}, "resetLink": {"required": true, "type": "string"}, "expirationHours": {"required": false, "type": "number"}}'::jsonb
 )
-ON CONFLICT (template_id) DO UPDATE SET
+ON CONFLICT (template_id, language) DO UPDATE SET
     name = EXCLUDED.name,
     description = EXCLUDED.description,
     content = EXCLUDED.content,
@@ -56,17 +58,18 @@ ON CONFLICT (template_id) DO UPDATE SET
     param_schema = EXCLUDED.param_schema,
     updated_at = CURRENT_TIMESTAMP;
 
--- SMS verification template
-INSERT INTO templates (template_id, name, description, content, category, param_schema)
+-- SMS verification template (English)
+INSERT INTO template (template_id, language, name, description, content, category, param_schema)
 VALUES (
     'sms-verification',
+    'en',
     'SMS Verification Code',
     'SMS template for sending verification codes',
     'Your verification code is: {{code}}. Valid for {{validMinutes}} minutes.',
     'SMS',
     '{"code": {"required": true, "type": "string", "pattern": "^[0-9]{6}$"}, "validMinutes": {"required": false, "type": "number"}}'::jsonb
 )
-ON CONFLICT (template_id) DO UPDATE SET
+ON CONFLICT (template_id, language) DO UPDATE SET
     name = EXCLUDED.name,
     description = EXCLUDED.description,
     content = EXCLUDED.content,
@@ -74,10 +77,11 @@ ON CONFLICT (template_id) DO UPDATE SET
     param_schema = EXCLUDED.param_schema,
     updated_at = CURRENT_TIMESTAMP;
 
--- Invoice document template
-INSERT INTO templates (template_id, name, description, content, category, param_schema)
+-- Invoice document template (English)
+INSERT INTO template (template_id, language, name, description, content, category, param_schema)
 VALUES (
     'invoice-document',
+    'en',
     'Invoice Document',
     'Template for generating invoice PDFs',
     '<html>
@@ -108,13 +112,13 @@ VALUES (
         <tr>
             <td>{{name}}</td>
             <td>{{quantity}}</td>
-            <td>${{price}}</td>
-            <td>${{total}}</td>
+            <td>$${{price}}</td>
+            <td>$${{total}}</td>
         </tr>
         {{/each}}
     </table>
     
-    <p class="total">Total: ${{totalAmount}}</p>
+    <p class="total">Total: $${{totalAmount}}</p>
     
     {{#if notes}}
     <p>Notes: {{notes}}</p>
@@ -124,7 +128,7 @@ VALUES (
     'DOCUMENT',
     '{"invoiceNumber": {"required": true, "type": "string"}, "invoiceDate": {"required": true, "type": "string"}, "customerName": {"required": true, "type": "string"}, "customerAddress": {"required": true, "type": "string"}, "items": {"required": true, "type": "array"}, "totalAmount": {"required": true, "type": "number"}, "notes": {"required": false, "type": "string"}}'::jsonb
 )
-ON CONFLICT (template_id) DO UPDATE SET
+ON CONFLICT (template_id, language) DO UPDATE SET
     name = EXCLUDED.name,
     description = EXCLUDED.description,
     content = EXCLUDED.content,
@@ -132,10 +136,11 @@ ON CONFLICT (template_id) DO UPDATE SET
     param_schema = EXCLUDED.param_schema,
     updated_at = CURRENT_TIMESTAMP;
 
--- Common header fragment
-INSERT INTO templates (template_id, name, description, content, category, param_schema)
+-- Common header fragment (English)
+INSERT INTO template (template_id, language, name, description, content, category, param_schema)
 VALUES (
     'email-header',
+    'en',
     'Email Header Fragment',
     'Reusable header for email templates',
     '<div style="background-color: #4CAF50; color: white; padding: 20px; text-align: center;">
@@ -147,7 +152,7 @@ VALUES (
     'COMMON',
     '{"companyName": {"required": true, "type": "string"}, "tagline": {"required": false, "type": "string"}}'::jsonb
 )
-ON CONFLICT (template_id) DO UPDATE SET
+ON CONFLICT (template_id, language) DO UPDATE SET
     name = EXCLUDED.name,
     description = EXCLUDED.description,
     content = EXCLUDED.content,

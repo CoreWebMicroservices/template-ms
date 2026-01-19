@@ -1,0 +1,36 @@
+spring:
+  config:
+    import:
+      - optional:classpath:db-config.yaml
+
+  datasource:
+    url: jdbc:h2:mem:testdb;MODE=PostgreSQL;DATABASE_TO_LOWER=TRUE;DEFAULT_NULL_ORDERING=HIGH;INIT=CREATE SCHEMA IF NOT EXISTS template_ms
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+        default_schema: template_ms
+
+  security:
+    common:
+      enabled: true
+    jwt:
+      algorithm: HS256
+      issuer: test-issuer
+      secretKey: dGVzdC1zZWNyZXQta2V5LWZvci1qd3QtdG9rZW4tdGVzdGluZy1wdXJwb3Nlcy1vbmx5LXRoaXMtaXMtYS12ZXJ5LWxvbmctc2VjcmV0LWtleQ==
+      accessExpirationTimeInMinutes: 10
+      refreshExpirationTimeInMinutes: 1440
+
+template-service:
+  default-language: en
+
+logging:
+  level:
+    com.corems: DEBUG
+    org.springframework.security: DEBUG

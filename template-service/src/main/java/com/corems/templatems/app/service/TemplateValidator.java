@@ -26,7 +26,7 @@ public class TemplateValidator {
     public void validateSyntax(String templateContent) {
         try {
             handlebars.compileInline(templateContent);
-        } catch (IOException e) {
+        } catch (Exception e) {
             throw ServiceException.of(
                 TemplateServiceExceptionReasonCodes.INVALID_TEMPLATE_SYNTAX,
                 "Invalid template syntax: " + e.getMessage()
@@ -49,7 +49,7 @@ public class TemplateValidator {
         Map<String, Object> paramSchema = new HashMap<>();
         for (String paramName : paramNames) {
             Map<String, Object> paramDef = new HashMap<>();
-            paramDef.put("required", false);
+            paramDef.put("required", true);
             paramDef.put("type", "string");
             paramSchema.put(paramName, paramDef);
         }

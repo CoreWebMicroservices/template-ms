@@ -11,7 +11,7 @@ import java.util.UUID;
 @Repository
 public interface TemplateRepository extends SearchableRepository<TemplateEntity, Long> {
 
-    Optional<TemplateEntity> findByTemplateIdAndIsDeletedFalse(String templateId);
+    Optional<TemplateEntity> findByTemplateIdAndLanguageAndIsDeletedFalse(String templateId, String language);
     
     Optional<TemplateEntity> findByUuid(UUID uuid);
 
@@ -22,11 +22,11 @@ public interface TemplateRepository extends SearchableRepository<TemplateEntity,
 
     @Override
     default List<String> getAllowedFilterFields() {
-        return List.of("category", "isDeleted");
+        return List.of("category", "language", "isDeleted");
     }
 
     @Override
     default List<String> getAllowedSortFields() {
-        return List.of("name", "category", "createdAt", "updatedAt", "templateId");
+        return List.of("name", "category", "language", "createdAt", "updatedAt", "templateId");
     }
 }

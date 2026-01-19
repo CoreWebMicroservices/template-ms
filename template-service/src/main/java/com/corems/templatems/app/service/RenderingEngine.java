@@ -11,12 +11,12 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
-public class HandlebarsRenderingEngine {
+public class RenderingEngine {
 
     private final Handlebars handlebars;
     private final Map<String, Template> templateCache;
 
-    public HandlebarsRenderingEngine() {
+    public RenderingEngine() {
         this.handlebars = new Handlebars();
         this.templateCache = new ConcurrentHashMap<>();
     }

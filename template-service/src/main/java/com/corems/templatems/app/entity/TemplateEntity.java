@@ -1,7 +1,6 @@
 package com.corems.templatems.app.entity;
 
 import com.corems.templatems.api.model.TemplateCategory;
-import io.hypersistence.utils.hibernate.type.json.JsonBinaryType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -18,7 +17,8 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import org.hibernate.annotations.Type;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.Instant;
 import java.util.Map;
@@ -31,7 +31,7 @@ import java.util.UUID;
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Entity
-@Table(name = "templates")
+@Table(name = "template")
 public class TemplateEntity {
 
     @Id
@@ -42,8 +42,11 @@ public class TemplateEntity {
     @Column(unique = true, nullable = false)
     private UUID uuid;
 
-    @Column(name = "template_id", unique = true, nullable = false)
+    @Column(name = "template_id", nullable = false)
     private String templateId;
+
+    @Column(nullable = false, length = 10)
+    private String language;
 
     @Column(nullable = false)
     private String name;
@@ -58,7 +61,7 @@ public class TemplateEntity {
     @Column(nullable = false, length = 50)
     private TemplateCategory category;
 
-    @Type(JsonBinaryType.class)
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "param_schema", columnDefinition = "jsonb")
     private Map<String, Object> paramSchema;
 

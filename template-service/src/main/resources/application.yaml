@@ -1,0 +1,15 @@
+server:
+  port: ${TEMPLATE-SERVICE-PORT:3004}
+
+spring:
+  application:
+    name: TEMPLATE-SERVICE
+  main:
+    banner-mode: off
+  jackson:
+    default-property-inclusion: non_null
+  config:
+    import: classpath:db-config.yaml, security-config.yaml
+
+template-service:
+  default-language: en

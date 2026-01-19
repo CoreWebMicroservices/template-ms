@@ -36,3 +36,4 @@ build/
 
 ### Generated ###
 **/src/main/resources/.gen/
+template-service/.jqwik-database

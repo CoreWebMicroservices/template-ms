@@ -93,7 +93,7 @@ paths:
       tags:
         - Templates
       summary: Get template by ID
-      description: Retrieve a template by its unique template ID
+      description: Retrieve a template by its unique template ID and optional language
       operationId: getTemplate
       parameters:
         - name: templateId
@@ -103,6 +103,13 @@ paths:
           schema:
             type: string
             example: welcome-email
+        - name: language
+          in: query
+          required: false
+          description: Template language (defaults to configured default language)
+          schema:
+            type: string
+            example: en
       responses:
         '200':
           description: Template retrieved successfully
@@ -128,6 +135,13 @@ paths:
           schema:
             type: string
             example: welcome-email
+        - name: language
+          in: query
+          required: false
+          description: Template language (defaults to configured default language)
+          schema:
+            type: string
+            example: en
       requestBody:
         required: true
         content:
@@ -159,6 +173,13 @@ paths:
           schema:
             type: string
             example: welcome-email
+        - name: language
+          in: query
+          required: false
+          description: Template language (defaults to configured default language)
+          schema:
+            type: string
+            example: en
       responses:
         '200':
           description: Template deleted successfully
@@ -187,6 +208,13 @@ paths:
           schema:
             type: string
             example: welcome-email
+        - name: language
+          in: query
+          required: false
+          description: Template language (defaults to configured default language)
+          schema:
+            type: string
+            example: en
       requestBody:
         required: true
         content:
@@ -219,6 +247,13 @@ paths:
           schema:
             type: string
             example: welcome-email
+        - name: language
+          in: query
+          required: false
+          description: Template language (defaults to configured default language)
+          schema:
+            type: string
+            example: en
       responses:
         '200':
           description: Metadata retrieved successfully
@@ -292,6 +327,12 @@ components:
           example: "<html><body>Hello {{userName}}!</body></html>"
         category:
           $ref: '#/components/schemas/TemplateCategory'
+        language:
+          type: string
+          minLength: 2
+          maxLength: 10
+          description: Template language code (defaults to configured default language if not provided)
+          example: en
         paramSchema:
           type: object
           additionalProperties:
@@ -327,6 +368,12 @@ components:
           description: Template content with Handlebars syntax
         category:
           $ref: '#/components/schemas/TemplateCategory'
+        language:
+          type: string
+          minLength: 2
+          maxLength: 10
+          description: Template language code
+          example: en
         paramSchema:
           type: object
           additionalProperties:
@@ -375,6 +422,10 @@ components:
           description: Template content with Handlebars syntax
         category:
           $ref: '#/components/schemas/TemplateCategory'
+        language:
+          type: string
+          description: Template language code
+          example: en
         paramSchema:
           type: object
           additionalProperties:
@@ -428,6 +479,10 @@ components:
           description: Template description
         category:
           $ref: '#/components/schemas/TemplateCategory'
+        language:
+          type: string
+          description: Template language code
+          example: en
         paramSchema:
           type: object
           additionalProperties:
