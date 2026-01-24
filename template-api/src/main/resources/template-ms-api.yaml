@@ -88,28 +88,21 @@ paths:
                 $ref: '#/components/schemas/TemplateResponse'
         <<: *common-error-responses
 
-  /api/templates/{templateId}:
+  /api/templates/{id}:
     get:
       tags:
         - Templates
       summary: Get template by ID
-      description: Retrieve a template by its unique template ID and optional language
+      description: Retrieve a template by its unique UUID
       operationId: getTemplate
       parameters:
-        - name: templateId
+        - name: id
           in: path
           required: true
-          description: Unique template identifier
+          description: Template UUID
           schema:
             type: string
-            example: welcome-email
-        - name: language
-          in: query
-          required: false
-          description: Template language (defaults to configured default language)
-          schema:
-            type: string
-            example: en
+            format: uuid
       responses:
         '200':
           description: Template retrieved successfully
@@ -126,22 +119,16 @@ paths:
       description: |
         Update an existing template. Requires SERVICE_ADMIN role.
         The template content will be validated for syntax errors.
+        Template ID and language can be changed.
       operationId: updateTemplate
       parameters:
-        - name: templateId
+        - name: id
           in: path
           required: true
-          description: Unique template identifier
+          description: Template UUID
           schema:
             type: string
-            example: welcome-email
-        - name: language
-          in: query
-          required: false
-          description: Template language (defaults to configured default language)
-          schema:
-            type: string
-            example: en
+            format: uuid
       requestBody:
         required: true
         content:
@@ -166,10 +153,36 @@ paths:
         Deleted templates cannot be rendered.
       operationId: deleteTemplate
       parameters:
+        - name: id
+          in: path
+          required: true
+          description: Template UUID
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Template deleted successfully
+          content:
+            application/json:
+              schema:
+                $ref: '.gen/common-api.yaml#/components/schemas/SuccessfulResponse'
+        <<: *common-error-responses
+
+  /api/templates/by-template-id/{templateId}:
+    get:
+      tags:
+        - Rendering
+      summary: Get template by template ID and language
+      description: |
+        Retrieve a template by its template ID and language for rendering purposes.
+        This endpoint is used by other services to fetch templates for rendering.
+      operationId: getTemplateByTemplateId
+      parameters:
         - name: templateId
           in: path
           required: true
-          description: Unique template identifier
+          description: Unique template identifier (e.g., welcome-email)
           schema:
             type: string
             example: welcome-email
@@ -182,13 +195,12 @@ paths:
             example: en
       responses:
         '200':
-          description: Template deleted successfully
+          description: Template retrieved successfully
           content:
             application/json:
               schema:
-                $ref: '.gen/common-api.yaml#/components/schemas/SuccessfulResponse'
+                $ref: '#/components/schemas/TemplateResponse'
         <<: *common-error-responses
-
 
   /api/templates/{templateId}/render:
     post:
@@ -352,6 +364,13 @@ components:
     UpdateTemplateRequest:
       type: object
       properties:
+        templateId:
+          type: string
+          pattern: '^[a-z0-9-]+'
+          minLength: 3
+          maxLength: 255
+          description: Unique template identifier (kebab-case) - can be changed
+          example: welcome-email
         name:
           type: string
           minLength: 1
@@ -372,7 +391,7 @@ components:
           type: string
           minLength: 2
           maxLength: 10
-          description: Template language code
+          description: Template language code - can be changed
           example: en
         paramSchema:
           type: object

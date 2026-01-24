@@ -1,7 +1,5 @@
 spring:
   security:
-    common:
-      enabled: ${SECURITY_ENABLED:false}
     cors:
       allowedOrigins: http://localhost:8080
     jwt:

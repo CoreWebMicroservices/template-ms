@@ -130,11 +130,11 @@ class TemplateServiceTest {
     }
 
     @Test
-    void getTemplate_WhenExists_ShouldReturnTemplate() {
-        when(templateRepository.findByTemplateIdAndLanguageAndIsDeletedFalse("welcome-email", "en"))
+    void getTemplateById_WhenExists_ShouldReturnTemplate() {
+        when(templateRepository.findByUuidAndIsDeletedFalse(testTemplate.getUuid()))
                 .thenReturn(Optional.of(testTemplate));
 
-        TemplateResponse response = templateService.getTemplate("welcome-email", "en");
+        TemplateResponse response = templateService.getTemplateById(testTemplate.getUuid());
 
         assertThat(response).isNotNull();
         assertThat(response.getTemplateId()).isEqualTo("welcome-email");
@@ -143,11 +143,12 @@ class TemplateServiceTest {
     }
 
     @Test
-    void getTemplate_WhenNotFound_ShouldThrowException() {
-        when(templateRepository.findByTemplateIdAndLanguageAndIsDeletedFalse("nonexistent", "en"))
+    void getTemplateById_WhenNotFound_ShouldThrowException() {
+        UUID nonexistentId = UUID.randomUUID();
+        when(templateRepository.findByUuidAndIsDeletedFalse(nonexistentId))
                 .thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> templateService.getTemplate("nonexistent", "en"))
+        assertThatThrownBy(() -> templateService.getTemplateById(nonexistentId))
                 .isInstanceOf(ServiceException.class)
                 .satisfies(throwable -> {
                     ServiceException exception = (ServiceException) throwable;
@@ -158,7 +159,7 @@ class TemplateServiceTest {
     }
 
     @Test
-    void updateTemplate_WhenValid_ShouldUpdateTemplate() {
+    void updateTemplateById_WhenValid_ShouldUpdateTemplate() {
         try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
             UserPrincipal mockPrincipal = mock(UserPrincipal.class);
             when(mockPrincipal.getUserId()).thenReturn(testUserId);
@@ -169,12 +170,12 @@ class TemplateServiceTest {
                     .description("Updated description")
                     .content("<h1>Welcome, {{user.name}}!</h1>");
 
-            when(templateRepository.findByTemplateIdAndLanguageAndIsDeletedFalse("welcome-email", "en"))
+            when(templateRepository.findByUuidAndIsDeletedFalse(testTemplate.getUuid()))
                     .thenReturn(Optional.of(testTemplate));
             when(templateRepository.save(any(TemplateEntity.class)))
                     .thenAnswer(invocation -> invocation.getArgument(0));
 
-            TemplateResponse response = templateService.updateTemplate("welcome-email", "en", updateRequest);
+            TemplateResponse response = templateService.updateTemplateById(testTemplate.getUuid(), updateRequest);
 
             assertThat(response).isNotNull();
             assertThat(response.getName()).isEqualTo("Updated Welcome Email");
@@ -185,18 +186,18 @@ class TemplateServiceTest {
     }
 
     @Test
-    void deleteTemplate_WhenExists_ShouldSoftDelete() {
+    void deleteTemplateById_WhenExists_ShouldSoftDelete() {
         try (MockedStatic<SecurityUtils> securityUtils = mockStatic(SecurityUtils.class)) {
             UserPrincipal mockPrincipal = mock(UserPrincipal.class);
             when(mockPrincipal.getUserId()).thenReturn(testUserId);
             securityUtils.when(SecurityUtils::getUserPrincipal).thenReturn(mockPrincipal);
 
-            when(templateRepository.findByTemplateIdAndLanguageAndIsDeletedFalse("welcome-email", "en"))
+            when(templateRepository.findByUuidAndIsDeletedFalse(testTemplate.getUuid()))
                     .thenReturn(Optional.of(testTemplate));
             when(templateRepository.save(any(TemplateEntity.class)))
                     .thenReturn(testTemplate);
 
-            templateService.deleteTemplate("welcome-email", "en");
+            templateService.deleteTemplateById(testTemplate.getUuid());
 
             assertThat(testTemplate.getIsDeleted()).isTrue();
             verify(templateRepository).save(testTemplate);

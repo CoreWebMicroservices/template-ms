@@ -81,7 +81,16 @@ public class TemplateService {
     }
 
     @Transactional(readOnly = true)
-    public TemplateResponse getTemplate(String templateId, String language) {
+    public TemplateResponse getTemplateById(UUID id) {
+        TemplateEntity entity = templateRepository.findByUuidAndIsDeletedFalse(id)
+                .orElseThrow(() -> ServiceException.of(TemplateServiceExceptionReasonCodes.TEMPLATE_NOT_FOUND, 
+                    "Template with ID '" + id + "' not found"));
+
+        return mapToResponse(entity);
+    }
+
+    @Transactional(readOnly = true)
+    public TemplateResponse getTemplateByTemplateId(String templateId, String language) {
         String effectiveLanguage = language != null ? language : defaultLanguage;
 
         TemplateEntity entity = templateRepository.findByTemplateIdAndLanguageAndIsDeletedFalse(templateId, effectiveLanguage)
@@ -108,14 +117,43 @@ public class TemplateService {
     }
 
     @Transactional
-    public TemplateResponse updateTemplate(String templateId, String language, UpdateTemplateRequest request) {
-        String effectiveLanguage = language != null ? language : defaultLanguage;
-
-        TemplateEntity entity = templateRepository.findByTemplateIdAndLanguageAndIsDeletedFalse(templateId, effectiveLanguage)
+    public TemplateResponse updateTemplateById(UUID id, UpdateTemplateRequest request) {
+        TemplateEntity entity = templateRepository.findByUuidAndIsDeletedFalse(id)
                 .orElseThrow(() -> ServiceException.of(TemplateServiceExceptionReasonCodes.TEMPLATE_NOT_FOUND, 
-                    "Template '" + templateId + "' with language '" + effectiveLanguage + "' not found"));
+                    "Template with ID '" + id + "' not found"));
 
+        String oldTemplateId = entity.getTemplateId();
+        String oldLanguage = entity.getLanguage();
         boolean contentChanged = false;
+        boolean identifierChanged = false;
+
+        if (request.getTemplateId() != null && !request.getTemplateId().equals(entity.getTemplateId())) {
+            Optional<TemplateEntity> existing = templateRepository.findByTemplateIdAndLanguageAndIsDeletedFalse(
+                request.getTemplateId(), 
+                request.getLanguage() != null ? request.getLanguage() : entity.getLanguage()
+            );
+            if (existing.isPresent() && !existing.get().getUuid().equals(id)) {
+                throw ServiceException.of(TemplateServiceExceptionReasonCodes.TEMPLATE_EXISTS, 
+                    "Template with ID '" + request.getTemplateId() + "' and language '" + 
+                    (request.getLanguage() != null ? request.getLanguage() : entity.getLanguage()) + "' already exists");
+            }
+            entity.setTemplateId(request.getTemplateId());
+            identifierChanged = true;
+        }
+
+        if (request.getLanguage() != null && !request.getLanguage().equals(entity.getLanguage())) {
+            Optional<TemplateEntity> existing = templateRepository.findByTemplateIdAndLanguageAndIsDeletedFalse(
+                request.getTemplateId() != null ? request.getTemplateId() : entity.getTemplateId(),
+                request.getLanguage()
+            );
+            if (existing.isPresent() && !existing.get().getUuid().equals(id)) {
+                throw ServiceException.of(TemplateServiceExceptionReasonCodes.TEMPLATE_EXISTS, 
+                    "Template with ID '" + (request.getTemplateId() != null ? request.getTemplateId() : entity.getTemplateId()) + 
+                    "' and language '" + request.getLanguage() + "' already exists");
+            }
+            entity.setLanguage(request.getLanguage());
+            identifierChanged = true;
+        }
 
         if (request.getName() != null) {
             entity.setName(request.getName());
@@ -147,31 +185,32 @@ public class TemplateService {
 
         entity = templateRepository.save(entity);
 
-        if (contentChanged) {
-            renderingEngine.invalidateCache(templateId + ":" + effectiveLanguage);
+        if (contentChanged || identifierChanged) {
+            renderingEngine.invalidateCache(oldTemplateId + ":" + oldLanguage);
+            if (identifierChanged) {
+                renderingEngine.invalidateCache(entity.getTemplateId() + ":" + entity.getLanguage());
+            }
         }
 
-        log.info("Updated template: {} (language: {}) by user: {}", templateId, effectiveLanguage, currentUser.getUserId());
+        log.info("Updated template: {} (language: {}) by user: {}", entity.getTemplateId(), entity.getLanguage(), currentUser.getUserId());
 
         return mapToResponse(entity);
     }
 
     @Transactional
-    public void deleteTemplate(String templateId, String language) {
-        String effectiveLanguage = language != null ? language : defaultLanguage;
-
-        TemplateEntity entity = templateRepository.findByTemplateIdAndLanguageAndIsDeletedFalse(templateId, effectiveLanguage)
+    public void deleteTemplateById(UUID id) {
+        TemplateEntity entity = templateRepository.findByUuidAndIsDeletedFalse(id)
                 .orElseThrow(() -> ServiceException.of(TemplateServiceExceptionReasonCodes.TEMPLATE_NOT_FOUND, 
-                    "Template '" + templateId + "' with language '" + effectiveLanguage + "' not found"));
+                    "Template with ID '" + id + "' not found"));
 
         entity.setIsDeleted(true);
         UserPrincipal currentUser = SecurityUtils.getUserPrincipal();
         entity.setUpdatedBy(currentUser.getUserId());
         templateRepository.save(entity);
 
-        renderingEngine.invalidateCache(templateId + ":" + effectiveLanguage);
+        renderingEngine.invalidateCache(entity.getTemplateId() + ":" + entity.getLanguage());
 
-        log.info("Deleted template: {} (language: {})", templateId, effectiveLanguage);
+        log.info("Deleted template: {} (language: {})", entity.getTemplateId(), entity.getLanguage());
     }
 
     @Transactional(readOnly = true)

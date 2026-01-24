@@ -14,6 +14,8 @@ public interface TemplateRepository extends SearchableRepository<TemplateEntity,
     Optional<TemplateEntity> findByTemplateIdAndLanguageAndIsDeletedFalse(String templateId, String language);
     
     Optional<TemplateEntity> findByUuid(UUID uuid);
+    
+    Optional<TemplateEntity> findByUuidAndIsDeletedFalse(UUID uuid);
 
     @Override
     default List<String> getSearchFields() {

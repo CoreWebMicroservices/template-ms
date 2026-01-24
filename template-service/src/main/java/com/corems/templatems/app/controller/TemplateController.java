@@ -22,6 +22,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Slf4j
 @RestController
@@ -42,8 +43,13 @@ public class TemplateController implements TemplatesApi, RenderingApi {
     }
 
     @Override
-    public ResponseEntity<TemplateResponse> getTemplate(String templateId, Optional<String> language) {
-        return ResponseEntity.ok(templateService.getTemplate(templateId, language.orElse(null)));
+    public ResponseEntity<TemplateResponse> getTemplate(UUID id) {
+        return ResponseEntity.ok(templateService.getTemplateById(id));
+    }
+
+    @Override
+    public ResponseEntity<TemplateResponse> getTemplateByTemplateId(String templateId, Optional<String> language) {
+        return ResponseEntity.ok(templateService.getTemplateByTemplateId(templateId, language.orElse(null)));
     }
 
     @Override
@@ -53,14 +59,14 @@ public class TemplateController implements TemplatesApi, RenderingApi {
 
     @Override
     @RequireRoles(CoreMsRoles.TEMPLATE_MS_ADMIN)
-    public ResponseEntity<TemplateResponse> updateTemplate(String templateId, UpdateTemplateRequest updateTemplateRequest, Optional<String> language) {
-        return ResponseEntity.ok(templateService.updateTemplate(templateId, language.orElse(null), updateTemplateRequest));
+    public ResponseEntity<TemplateResponse> updateTemplate(UUID id, UpdateTemplateRequest updateTemplateRequest) {
+        return ResponseEntity.ok(templateService.updateTemplateById(id, updateTemplateRequest));
     }
 
     @Override
     @RequireRoles(CoreMsRoles.TEMPLATE_MS_ADMIN)
-    public ResponseEntity<SuccessfulResponse> deleteTemplate(String templateId, Optional<String> language) {
-        templateService.deleteTemplate(templateId, language.orElse(null));
+    public ResponseEntity<SuccessfulResponse> deleteTemplate(UUID id) {
+        templateService.deleteTemplateById(id);
         return ResponseEntity.ok(new SuccessfulResponse().result(true));
     }
 

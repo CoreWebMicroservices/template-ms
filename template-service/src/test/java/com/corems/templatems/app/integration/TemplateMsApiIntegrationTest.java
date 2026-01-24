@@ -43,6 +43,11 @@ class TemplateMsApiIntegrationTest {
     private static final UUID TEST_ADMIN_ID = UUID.randomUUID();
     private static final String TEST_USER_EMAIL = "testuser@example.com";
     private static final String TEST_ADMIN_EMAIL = "admin@example.com";
+    
+    private static UUID welcomeEmailTemplateId;
+    private static UUID renderTestTemplateId;
+    private static UUID multilangEnTemplateId;
+    private static UUID multilangEsTemplateId;
 
     private String createToken(UUID userId, String email, List<String> roles) {
         Map<String, Object> claims = Map.of(
@@ -99,7 +104,8 @@ class TemplateMsApiIntegrationTest {
                 .name("Updated Template")
                 .content("<h1>Updated</h1>");
 
-        assertThatThrownBy(() -> templatesApi.updateTemplate("test-template", request, "en"))
+        UUID randomId = UUID.randomUUID();
+        assertThatThrownBy(() -> templatesApi.updateTemplate(randomId, request))
             .isInstanceOf(RestClientResponseException.class)
             .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isIn(401, 403));
     }
@@ -109,7 +115,8 @@ class TemplateMsApiIntegrationTest {
     void deleteTemplate_WhenAuthenticatedAsUser_ShouldBeDenied() {
         authenticateAsUser();
 
-        assertThatThrownBy(() -> templatesApi.deleteTemplate("test-template", "en"))
+        UUID randomId = UUID.randomUUID();
+        assertThatThrownBy(() -> templatesApi.deleteTemplate(randomId))
             .isInstanceOf(RestClientResponseException.class)
             .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isIn(401, 403));
     }
@@ -130,10 +137,13 @@ class TemplateMsApiIntegrationTest {
         TemplateResponse response = templatesApi.createTemplate(request);
 
         assertThat(response).isNotNull();
+        assertThat(response.getId()).isNotNull();
         assertThat(response.getTemplateId()).isEqualTo("welcome-email");
         assertThat(response.getLanguage()).isEqualTo("en");
         assertThat(response.getName()).isEqualTo("Welcome Email");
         assertThat(response.getCategory()).isEqualTo(TemplateCategory.EMAIL);
+        
+        welcomeEmailTemplateId = response.getId();
     }
 
     @Test
@@ -154,7 +164,7 @@ class TemplateMsApiIntegrationTest {
     @Test
     @Order(12)
     void getTemplate_WhenExists_ShouldReturnTemplate() {
-        TemplateResponse response = templatesApi.getTemplate("welcome-email", "en");
+        TemplateResponse response = templatesApi.getTemplate(welcomeEmailTemplateId);
 
         assertThat(response).isNotNull();
         assertThat(response.getTemplateId()).isEqualTo("welcome-email");
@@ -165,7 +175,8 @@ class TemplateMsApiIntegrationTest {
     @Test
     @Order(13)
     void getTemplate_WhenNotFound_ShouldReturn404() {
-        assertThatThrownBy(() -> templatesApi.getTemplate("nonexistent", "en"))
+        UUID nonexistentId = UUID.randomUUID();
+        assertThatThrownBy(() -> templatesApi.getTemplate(nonexistentId))
             .isInstanceOf(RestClientResponseException.class)
             .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(404));
     }
@@ -178,7 +189,7 @@ class TemplateMsApiIntegrationTest {
                 .description("Updated description")
                 .content("<h1>Welcome, {{user.name}}!</h1>");
 
-        TemplateResponse response = templatesApi.updateTemplate("welcome-email", request, "en");
+        TemplateResponse response = templatesApi.updateTemplate(welcomeEmailTemplateId, request);
 
         assertThat(response).isNotNull();
         assertThat(response.getName()).isEqualTo("Updated Welcome Email");
@@ -188,11 +199,11 @@ class TemplateMsApiIntegrationTest {
     @Test
     @Order(15)
     void deleteTemplate_WhenExists_ShouldSoftDelete() {
-        SuccessfulResponse response = templatesApi.deleteTemplate("welcome-email", "en");
+        SuccessfulResponse response = templatesApi.deleteTemplate(welcomeEmailTemplateId);
 
         assertThat(response.getResult()).isTrue();
 
-        assertThatThrownBy(() -> templatesApi.getTemplate("welcome-email", "en"))
+        assertThatThrownBy(() -> templatesApi.getTemplate(welcomeEmailTemplateId))
             .isInstanceOf(RestClientResponseException.class)
             .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(404));
     }
@@ -257,7 +268,8 @@ class TemplateMsApiIntegrationTest {
                 .name("Render Test")
                 .category(TemplateCategory.EMAIL)
                 .content("<h1>Hello, {{name}}!</h1>");
-        templatesApi.createTemplate(createRequest);
+        TemplateResponse created = templatesApi.createTemplate(createRequest);
+        renderTestTemplateId = created.getId();
 
         authenticateAsUser();
 
@@ -331,7 +343,8 @@ class TemplateMsApiIntegrationTest {
                 .name("English Template")
                 .category(TemplateCategory.EMAIL)
                 .content("<h1>Hello</h1>");
-        templatesApi.createTemplate(enRequest);
+        TemplateResponse enCreated = templatesApi.createTemplate(enRequest);
+        multilangEnTemplateId = enCreated.getId();
 
         CreateTemplateRequest esRequest = new CreateTemplateRequest()
                 .templateId("multilang-test")
@@ -339,10 +352,11 @@ class TemplateMsApiIntegrationTest {
                 .name("Spanish Template")
                 .category(TemplateCategory.EMAIL)
                 .content("<h1>Hola</h1>");
-        templatesApi.createTemplate(esRequest);
+        TemplateResponse esCreated = templatesApi.createTemplate(esRequest);
+        multilangEsTemplateId = esCreated.getId();
 
-        TemplateResponse enResponse = templatesApi.getTemplate("multilang-test", "en");
-        TemplateResponse esResponse = templatesApi.getTemplate("multilang-test", "es");
+        TemplateResponse enResponse = templatesApi.getTemplate(multilangEnTemplateId);
+        TemplateResponse esResponse = templatesApi.getTemplate(multilangEsTemplateId);
 
         assertThat(enResponse.getContent()).contains("Hello");
         assertThat(esResponse.getContent()).contains("Hola");
@@ -379,7 +393,6 @@ class TemplateMsApiIntegrationTest {
     @Test
     @Order(70)
     void apiCalls_WhenNotAuthenticated_ShouldReturn401() {
-        // Create a fresh API client without any authentication
         ApiClient unauthenticatedClient = new ApiClient();
         unauthenticatedClient.setBasePath("http://localhost:" + port);
         TemplatesApi unauthenticatedTemplatesApi = new TemplatesApi(unauthenticatedClient);
@@ -388,7 +401,8 @@ class TemplateMsApiIntegrationTest {
             .isInstanceOf(RestClientResponseException.class)
             .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(401));
 
-        assertThatThrownBy(() -> unauthenticatedTemplatesApi.getTemplate("test", "en"))
+        UUID randomId = UUID.randomUUID();
+        assertThatThrownBy(() -> unauthenticatedTemplatesApi.getTemplate(randomId))
             .isInstanceOf(RestClientResponseException.class)
             .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(401));
     }
