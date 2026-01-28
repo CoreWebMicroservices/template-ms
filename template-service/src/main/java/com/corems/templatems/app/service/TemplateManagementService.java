@@ -6,8 +6,6 @@ import com.corems.common.security.UserPrincipal;
 import com.corems.common.utils.db.utils.QueryParams;
 import com.corems.templatems.app.exception.TemplateServiceExceptionReasonCodes;
 import com.corems.templatems.api.model.CreateTemplateRequest;
-import com.corems.templatems.api.model.RenderTemplateRequest;
-import com.corems.templatems.api.model.RenderTemplateResponse;
 import com.corems.templatems.api.model.TemplateMetadataResponse;
 import com.corems.templatems.api.model.TemplatePagedResponse;
 import com.corems.templatems.api.model.TemplateParamDefinition;
@@ -23,9 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZoneOffset;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -33,7 +29,7 @@ import java.util.UUID;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class TemplateService {
+public class TemplateManagementService {
 
     private final TemplateRepository templateRepository;
     private final TemplateValidator templateValidator;
@@ -90,22 +86,11 @@ public class TemplateService {
     }
 
     @Transactional(readOnly = true)
-    public TemplateResponse getTemplateByTemplateId(String templateId, String language) {
-        String effectiveLanguage = language != null ? language : defaultLanguage;
-
-        TemplateEntity entity = templateRepository.findByTemplateIdAndLanguageAndIsDeletedFalse(templateId, effectiveLanguage)
-                .orElseThrow(() -> ServiceException.of(TemplateServiceExceptionReasonCodes.TEMPLATE_NOT_FOUND, 
-                    "Template '" + templateId + "' with language '" + effectiveLanguage + "' not found"));
-
-        return mapToResponse(entity);
-    }
-
-    @Transactional(readOnly = true)
-    public TemplatePagedResponse listTemplates(Optional<Integer> page, Optional<Integer> pageSize, Optional<String> sort, Optional<String> search, Optional<List<String>> filter) {
+    public TemplatePagedResponse listTemplates(Optional<Integer> page, Optional<Integer> pageSize, Optional<String> sort, Optional<String> search, Optional<java.util.List<String>> filter) {
         QueryParams params = new QueryParams(page, pageSize, search, sort, filter);
         
         Page<TemplateEntity> templatePage = templateRepository.findAllByQueryParams(params);
-        List<TemplateResponse> items = templatePage.getContent().stream()
+        java.util.List<TemplateResponse> items = templatePage.getContent().stream()
                 .map(this::mapToResponse)
                 .toList();
 
@@ -211,66 +196,6 @@ public class TemplateService {
         renderingEngine.invalidateCache(entity.getTemplateId() + ":" + entity.getLanguage());
 
         log.info("Deleted template: {} (language: {})", entity.getTemplateId(), entity.getLanguage());
-    }
-
-    @Transactional(readOnly = true)
-    public RenderTemplateResponse renderTemplate(String templateId, String language, RenderTemplateRequest request) {
-        String effectiveLanguage = language != null ? language : defaultLanguage;
-
-        TemplateEntity entity = templateRepository.findByTemplateIdAndLanguageAndIsDeletedFalse(templateId, effectiveLanguage)
-                .orElseThrow(() -> ServiceException.of(TemplateServiceExceptionReasonCodes.TEMPLATE_NOT_FOUND, 
-                    "Template '" + templateId + "' with language '" + effectiveLanguage + "' not found"));
-
-        validateRenderParams(entity, request.getParams());
-
-        String html = renderingEngine.render(templateId + ":" + effectiveLanguage, entity.getContent(), request.getParams());
-
-        return new RenderTemplateResponse().html(html);
-    }
-
-    @Transactional(readOnly = true)
-    public TemplateMetadataResponse getTemplateMetadata(String templateId, String language) {
-        String effectiveLanguage = language != null ? language : defaultLanguage;
-
-        TemplateEntity entity = templateRepository.findByTemplateIdAndLanguageAndIsDeletedFalse(templateId, effectiveLanguage)
-                .orElseThrow(() -> ServiceException.of(TemplateServiceExceptionReasonCodes.TEMPLATE_NOT_FOUND, 
-                    "Template '" + templateId + "' with language '" + effectiveLanguage + "' not found"));
-
-        return new TemplateMetadataResponse()
-                .templateId(entity.getTemplateId())
-                .name(entity.getName())
-                .description(entity.getDescription())
-                .category(entity.getCategory())
-                .language(entity.getLanguage())
-                .paramSchema(convertToParamDefinitionMap(entity.getParamSchema()));
-    }
-
-    private void validateRenderParams(TemplateEntity entity, Map<String, Object> params) {
-        if (entity.getParamSchema() == null || entity.getParamSchema().isEmpty()) {
-            return;
-        }
-
-        List<String> missingParams = new ArrayList<>();
-
-        for (Map.Entry<String, Object> entry : entity.getParamSchema().entrySet()) {
-            String paramName = entry.getKey();
-            Object paramDef = entry.getValue();
-
-            if (paramDef instanceof Map) {
-                @SuppressWarnings("unchecked")
-                Map<String, Object> defMap = (Map<String, Object>) paramDef;
-                Boolean required = (Boolean) defMap.get("required");
-
-                if (Boolean.TRUE.equals(required) && !params.containsKey(paramName)) {
-                    missingParams.add(paramName);
-                }
-            }
-        }
-
-        if (!missingParams.isEmpty()) {
-            throw ServiceException.of(TemplateServiceExceptionReasonCodes.MISSING_REQUIRED_PARAMS, 
-                "Missing required parameters: " + String.join(", ", missingParams));
-        }
     }
 
     private Map<String, Object> convertParamSchema(Map<String, TemplateParamDefinition> paramDefMap) {

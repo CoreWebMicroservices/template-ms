@@ -29,13 +29,13 @@ public class TemplateMsClientConfig {
 
     @Bean
     @ConditionalOnMissingBean(name = "templatesApi")
-    public TemplatesApi templatesApi(ApiClient templateApiClient) {
-        return new TemplatesApi(templateApiClient);
+    public TemplateManagementApi templatesApi(ApiClient templateApiClient) {
+        return new TemplateManagementApi(templateApiClient);
     }
 
     @Bean
     @ConditionalOnMissingBean(name = "renderingApi")
-    public RenderingApi renderingApi(ApiClient templateApiClient) {
-        return new RenderingApi(templateApiClient);
+    public TemplateRenderingApi renderingApi(ApiClient templateApiClient) {
+        return new TemplateRenderingApi(templateApiClient);
     }
 }

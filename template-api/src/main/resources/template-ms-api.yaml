@@ -1,6 +1,6 @@
 openapi: 3.0.3
 info:
-  title: CoreMs Template Service API
+  title: CoreMS Template Service API
   description: |
     The Template Service API provides centralized management and rendering of HTML templates.
     Templates are used by communication-ms for emails/SMS, document-ms for PDF generation,
@@ -19,10 +19,10 @@ servers:
     description: Default server
 
 tags:
-  - name: Templates
-    description: Template management operations
-  - name: Rendering
-    description: Template rendering operations
+  - name: Template Management
+    description: Template CRUD operations (admin only)
+  - name: Template Rendering
+    description: Template rendering and metadata operations
 
 x-common-error-responses: &common-error-responses
   '400':
@@ -44,7 +44,7 @@ paths:
   /api/templates:
     get:
       tags:
-        - Templates
+        - Template Management
       summary: List and search templates
       description: |
         Retrieve a paginated list of templates with optional filtering and search.
@@ -67,7 +67,7 @@ paths:
 
     post:
       tags:
-        - Templates
+        - Template Management
       summary: Create a new template
       description: |
         Create a new template. Requires SERVICE_ADMIN role.
@@ -91,7 +91,7 @@ paths:
   /api/templates/{id}:
     get:
       tags:
-        - Templates
+        - Template Management
       summary: Get template by ID
       description: Retrieve a template by its unique UUID
       operationId: getTemplate
@@ -114,7 +114,7 @@ paths:
 
     put:
       tags:
-        - Templates
+        - Template Management
       summary: Update a template
       description: |
         Update an existing template. Requires SERVICE_ADMIN role.
@@ -146,7 +146,7 @@ paths:
 
     delete:
       tags:
-        - Templates
+        - Template Management
       summary: Delete a template
       description: |
         Soft delete a template. Requires SERVICE_ADMIN role.
@@ -169,10 +169,10 @@ paths:
                 $ref: '.gen/common-api.yaml#/components/schemas/SuccessfulResponse'
         <<: *common-error-responses
 
-  /api/templates/by-template-id/{templateId}:
+  /api/templates/{templateId}/fetch:
     get:
       tags:
-        - Rendering
+        - Template Rendering
       summary: Get template by template ID and language
       description: |
         Retrieve a template by its template ID and language for rendering purposes.
@@ -205,7 +205,7 @@ paths:
   /api/templates/{templateId}/render:
     post:
       tags:
-        - Rendering
+        - Template Rendering
       summary: Render template with parameters
       description: |
         Render a template by substituting variables with provided parameters.
@@ -245,7 +245,7 @@ paths:
   /api/templates/{templateId}/metadata:
     get:
       tags:
-        - Rendering
+        - Template Rendering
       summary: Get template metadata
       description: |
         Retrieve template metadata including required parameters,

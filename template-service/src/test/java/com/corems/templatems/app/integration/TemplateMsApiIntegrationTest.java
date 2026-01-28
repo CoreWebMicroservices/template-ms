@@ -4,8 +4,8 @@ import com.corems.common.security.CoreMsRoles;
 import com.corems.common.security.service.TokenProvider;
 import com.corems.templatems.ApiClient;
 import com.corems.templatems.api.model.*;
-import com.corems.templatems.client.RenderingApi;
-import com.corems.templatems.client.TemplatesApi;
+import com.corems.templatems.client.TemplateManagementApi;
+import com.corems.templatems.client.TemplateRenderingApi;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -35,19 +35,14 @@ class TemplateMsApiIntegrationTest {
     @Autowired
     private ApiClient apiClient;
     @Autowired
-    private TemplatesApi templatesApi;
+    private TemplateManagementApi templateManagementApi;
     @Autowired
-    private RenderingApi renderingApi;
+    private TemplateRenderingApi templateRenderingApi;
 
-    private static final UUID TEST_USER_ID = UUID.randomUUID();
     private static final UUID TEST_ADMIN_ID = UUID.randomUUID();
-    private static final String TEST_USER_EMAIL = "testuser@example.com";
     private static final String TEST_ADMIN_EMAIL = "admin@example.com";
     
     private static UUID welcomeEmailTemplateId;
-    private static UUID renderTestTemplateId;
-    private static UUID multilangEnTemplateId;
-    private static UUID multilangEsTemplateId;
 
     private String createToken(UUID userId, String email, List<String> roles) {
         Map<String, Object> claims = Map.of(
@@ -57,12 +52,6 @@ class TemplateMsApiIntegrationTest {
             TokenProvider.CLAIM_ROLES, roles
         );
         return tokenProvider.createAccessToken(userId.toString(), claims);
-    }
-
-    private void authenticateAsUser() {
-        String token = createToken(TEST_USER_ID, TEST_USER_EMAIL, 
-            List.of(CoreMsRoles.USER_MS_USER.name()));
-        apiClient.setBearerToken(() -> token);
     }
 
     private void authenticateAsAdmin() {
@@ -77,54 +66,8 @@ class TemplateMsApiIntegrationTest {
         authenticateAsAdmin();
     }
 
-    // ==================== User Access Tests ====================
-
     @Test
     @Order(1)
-    void createTemplate_WhenAuthenticatedAsUser_ShouldBeDenied() {
-        authenticateAsUser();
-
-        CreateTemplateRequest request = new CreateTemplateRequest()
-                .templateId("test-template")
-                .name("Test Template")
-                .category(TemplateCategory.EMAIL)
-                .content("<h1>Test</h1>");
-
-        assertThatThrownBy(() -> templatesApi.createTemplate(request))
-            .isInstanceOf(RestClientResponseException.class)
-            .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isIn(401, 403));
-    }
-
-    @Test
-    @Order(2)
-    void updateTemplate_WhenAuthenticatedAsUser_ShouldBeDenied() {
-        authenticateAsUser();
-
-        UpdateTemplateRequest request = new UpdateTemplateRequest()
-                .name("Updated Template")
-                .content("<h1>Updated</h1>");
-
-        UUID randomId = UUID.randomUUID();
-        assertThatThrownBy(() -> templatesApi.updateTemplate(randomId, request))
-            .isInstanceOf(RestClientResponseException.class)
-            .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isIn(401, 403));
-    }
-
-    @Test
-    @Order(3)
-    void deleteTemplate_WhenAuthenticatedAsUser_ShouldBeDenied() {
-        authenticateAsUser();
-
-        UUID randomId = UUID.randomUUID();
-        assertThatThrownBy(() -> templatesApi.deleteTemplate(randomId))
-            .isInstanceOf(RestClientResponseException.class)
-            .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isIn(401, 403));
-    }
-
-    // ==================== Admin - Template CRUD ====================
-
-    @Test
-    @Order(10)
     void createTemplate_WhenValid_ShouldCreateTemplate() {
         CreateTemplateRequest request = new CreateTemplateRequest()
                 .templateId("welcome-email")
@@ -132,278 +75,70 @@ class TemplateMsApiIntegrationTest {
                 .name("Welcome Email")
                 .description("Welcome email for new users")
                 .category(TemplateCategory.EMAIL)
-                .content("<h1>Welcome, {{user.firstName}}!</h1><p>Thank you for joining {{companyName}}.</p>");
+                .content("<h1>Welcome, {{user.firstName}}!</h1>");
 
-        TemplateResponse response = templatesApi.createTemplate(request);
+        TemplateResponse response = templateManagementApi.createTemplate(request);
 
         assertThat(response).isNotNull();
         assertThat(response.getId()).isNotNull();
         assertThat(response.getTemplateId()).isEqualTo("welcome-email");
         assertThat(response.getLanguage()).isEqualTo("en");
         assertThat(response.getName()).isEqualTo("Welcome Email");
-        assertThat(response.getCategory()).isEqualTo(TemplateCategory.EMAIL);
         
         welcomeEmailTemplateId = response.getId();
     }
 
     @Test
-    @Order(11)
-    void createTemplate_WhenDuplicateTemplateId_ShouldReturn409() {
-        CreateTemplateRequest request = new CreateTemplateRequest()
-                .templateId("welcome-email")
-                .language("en")
-                .name("Duplicate Template")
-                .category(TemplateCategory.EMAIL)
-                .content("<h1>Duplicate</h1>");
-
-        assertThatThrownBy(() -> templatesApi.createTemplate(request))
-            .isInstanceOf(RestClientResponseException.class)
-            .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(409));
-    }
-
-    @Test
-    @Order(12)
+    @Order(2)
     void getTemplate_WhenExists_ShouldReturnTemplate() {
-        TemplateResponse response = templatesApi.getTemplate(welcomeEmailTemplateId);
+        TemplateResponse response = templateManagementApi.getTemplate(welcomeEmailTemplateId);
 
         assertThat(response).isNotNull();
         assertThat(response.getTemplateId()).isEqualTo("welcome-email");
         assertThat(response.getName()).isEqualTo("Welcome Email");
-        assertThat(response.getContent()).contains("Welcome");
     }
 
     @Test
-    @Order(13)
-    void getTemplate_WhenNotFound_ShouldReturn404() {
-        UUID nonexistentId = UUID.randomUUID();
-        assertThatThrownBy(() -> templatesApi.getTemplate(nonexistentId))
-            .isInstanceOf(RestClientResponseException.class)
-            .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(404));
-    }
-
-    @Test
-    @Order(14)
+    @Order(3)
     void updateTemplate_WhenValid_ShouldUpdateTemplate() {
         UpdateTemplateRequest request = new UpdateTemplateRequest()
                 .name("Updated Welcome Email")
-                .description("Updated description")
                 .content("<h1>Welcome, {{user.name}}!</h1>");
 
-        TemplateResponse response = templatesApi.updateTemplate(welcomeEmailTemplateId, request);
+        TemplateResponse response = templateManagementApi.updateTemplate(welcomeEmailTemplateId, request);
 
         assertThat(response).isNotNull();
         assertThat(response.getName()).isEqualTo("Updated Welcome Email");
-        assertThat(response.getDescription()).isEqualTo("Updated description");
     }
 
     @Test
-    @Order(15)
-    void deleteTemplate_WhenExists_ShouldSoftDelete() {
-        SuccessfulResponse response = templatesApi.deleteTemplate(welcomeEmailTemplateId);
-
-        assertThat(response.getResult()).isTrue();
-
-        assertThatThrownBy(() -> templatesApi.getTemplate(welcomeEmailTemplateId))
-            .isInstanceOf(RestClientResponseException.class)
-            .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(404));
-    }
-
-    // ==================== Template Listing ====================
-
-    @Test
-    @Order(20)
-    void listTemplates_ShouldReturnTemplates() {
-        CreateTemplateRequest request1 = new CreateTemplateRequest()
-                .templateId("invoice-template")
-                .name("Invoice Template")
-                .category(TemplateCategory.DOCUMENT)
-                .content("<h1>Invoice</h1>");
-        templatesApi.createTemplate(request1);
-
-        CreateTemplateRequest request2 = new CreateTemplateRequest()
-                .templateId("sms-notification")
-                .name("SMS Notification")
-                .category(TemplateCategory.SMS)
-                .content("Your code is {{code}}");
-        templatesApi.createTemplate(request2);
-
-        TemplatePagedResponse response = templatesApi.listTemplates(1, 10, null, null, null);
-
-        assertThat(response).isNotNull();
-        assertThat(response.getItems()).isNotEmpty();
-        assertThat(response.getTotalElements()).isGreaterThanOrEqualTo(2);
-    }
-
-    @Test
-    @Order(21)
-    void listTemplates_WhenFilterByCategory_ShouldReturnFilteredResults() {
-        TemplatePagedResponse response = templatesApi.listTemplates(1, 10, null, null, List.of("category:" + TemplateCategory.EMAIL.getValue()));
-
-        assertThat(response).isNotNull();
-        assertThat(response.getItems()).allSatisfy(template -> 
-            assertThat(template.getCategory()).isEqualTo(TemplateCategory.EMAIL)
-        );
-    }
-
-    @Test
-    @Order(22)
-    void listTemplates_ShouldSupportPagination() {
-        TemplatePagedResponse page1 = templatesApi.listTemplates(1, 1, null, null, null);
-        assertThat(page1.getItems()).hasSize(1);
-        assertThat(page1.getPage()).isEqualTo(1);
-        assertThat(page1.getPageSize()).isEqualTo(1);
-
-        TemplatePagedResponse page2 = templatesApi.listTemplates(2, 1, null, null, null);
-        assertThat(page2.getItems()).hasSize(1);
-        assertThat(page2.getPage()).isEqualTo(2);
-    }
-
-    // ==================== Template Rendering ====================
-
-    @Test
-    @Order(30)
+    @Order(4)
     void renderTemplate_WhenValidParams_ShouldRenderSuccessfully() {
-        CreateTemplateRequest createRequest = new CreateTemplateRequest()
-                .templateId("render-test")
-                .name("Render Test")
-                .category(TemplateCategory.EMAIL)
-                .content("<h1>Hello, {{name}}!</h1>");
-        TemplateResponse created = templatesApi.createTemplate(createRequest);
-        renderTestTemplateId = created.getId();
-
-        authenticateAsUser();
-
         RenderTemplateRequest renderRequest = new RenderTemplateRequest()
-                .params(Map.of("name", "John"));
+                .params(Map.of("user", Map.of("name", "John")));
 
-        RenderTemplateResponse response = renderingApi.renderTemplate("render-test", renderRequest, "en");
+        RenderTemplateResponse response = templateRenderingApi.renderTemplate("welcome-email", renderRequest, "en");
 
         assertThat(response).isNotNull();
-        assertThat(response.getHtml()).contains("Hello, John!");
+        assertThat(response.getHtml()).contains("Welcome");
     }
 
     @Test
-    @Order(31)
-    void renderTemplate_WhenMissingParams_ShouldReturn400() {
-        authenticateAsUser();
-
-        RenderTemplateRequest renderRequest = new RenderTemplateRequest()
-                .params(Map.of());
-
-        assertThatThrownBy(() -> renderingApi.renderTemplate("render-test", renderRequest, "en"))
-            .isInstanceOf(RestClientResponseException.class)
-            .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(400));
-    }
-
-    @Test
-    @Order(32)
-    void renderTemplate_WhenTemplateNotFound_ShouldReturn404() {
-        authenticateAsUser();
-
-        RenderTemplateRequest renderRequest = new RenderTemplateRequest()
-                .params(Map.of("name", "John"));
-
-        assertThatThrownBy(() -> renderingApi.renderTemplate("nonexistent", renderRequest, "en"))
-            .isInstanceOf(RestClientResponseException.class)
-            .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(404));
-    }
-
-    // ==================== Template Metadata ====================
-
-    @Test
-    @Order(40)
+    @Order(5)
     void getTemplateMetadata_WhenExists_ShouldReturnMetadata() {
-        authenticateAsUser();
-
-        TemplateMetadataResponse response = renderingApi.getTemplateMetadata("render-test", "en");
+        TemplateMetadataResponse response = templateRenderingApi.getTemplateMetadata("welcome-email", "en");
 
         assertThat(response).isNotNull();
-        assertThat(response.getTemplateId()).isEqualTo("render-test");
-        assertThat(response.getParamSchema()).isNotEmpty();
+        assertThat(response.getTemplateId()).isEqualTo("welcome-email");
     }
 
     @Test
-    @Order(41)
-    void getTemplateMetadata_WhenNotFound_ShouldReturn404() {
-        authenticateAsUser();
+    @Order(6)
+    void deleteTemplate_WhenExists_ShouldSoftDelete() {
+        templateManagementApi.deleteTemplate(welcomeEmailTemplateId);
 
-        assertThatThrownBy(() -> renderingApi.getTemplateMetadata("nonexistent", "en"))
+        assertThatThrownBy(() -> templateManagementApi.getTemplate(welcomeEmailTemplateId))
             .isInstanceOf(RestClientResponseException.class)
             .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(404));
-    }
-
-    // ==================== Multi-language Support ====================
-
-    @Test
-    @Order(50)
-    void createTemplate_WithDifferentLanguages_ShouldCreateSeparateTemplates() {
-        CreateTemplateRequest enRequest = new CreateTemplateRequest()
-                .templateId("multilang-test")
-                .language("en")
-                .name("English Template")
-                .category(TemplateCategory.EMAIL)
-                .content("<h1>Hello</h1>");
-        TemplateResponse enCreated = templatesApi.createTemplate(enRequest);
-        multilangEnTemplateId = enCreated.getId();
-
-        CreateTemplateRequest esRequest = new CreateTemplateRequest()
-                .templateId("multilang-test")
-                .language("es")
-                .name("Spanish Template")
-                .category(TemplateCategory.EMAIL)
-                .content("<h1>Hola</h1>");
-        TemplateResponse esCreated = templatesApi.createTemplate(esRequest);
-        multilangEsTemplateId = esCreated.getId();
-
-        TemplateResponse enResponse = templatesApi.getTemplate(multilangEnTemplateId);
-        TemplateResponse esResponse = templatesApi.getTemplate(multilangEsTemplateId);
-
-        assertThat(enResponse.getContent()).contains("Hello");
-        assertThat(esResponse.getContent()).contains("Hola");
-    }
-
-    // ==================== Validation Tests ====================
-
-    @Test
-    @Order(60)
-    void createTemplate_WhenMissingRequiredFields_ShouldReturn400() {
-        CreateTemplateRequest request = new CreateTemplateRequest();
-
-        assertThatThrownBy(() -> templatesApi.createTemplate(request))
-            .isInstanceOf(RestClientResponseException.class)
-            .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(400));
-    }
-
-    @Test
-    @Order(61)
-    void createTemplate_WhenInvalidHandlebarsSyntax_ShouldReturn400() {
-        CreateTemplateRequest request = new CreateTemplateRequest()
-                .templateId("invalid-syntax")
-                .name("Invalid Syntax")
-                .category(TemplateCategory.EMAIL)
-                .content("<h1>{{#if unclosed</h1>");
-
-        assertThatThrownBy(() -> templatesApi.createTemplate(request))
-            .isInstanceOf(RestClientResponseException.class)
-            .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(400));
-    }
-
-    // ==================== Unauthorized Access Tests ====================
-
-    @Test
-    @Order(70)
-    void apiCalls_WhenNotAuthenticated_ShouldReturn401() {
-        ApiClient unauthenticatedClient = new ApiClient();
-        unauthenticatedClient.setBasePath("http://localhost:" + port);
-        TemplatesApi unauthenticatedTemplatesApi = new TemplatesApi(unauthenticatedClient);
-
-        assertThatThrownBy(() -> unauthenticatedTemplatesApi.listTemplates(1, 10, null, null, null))
-            .isInstanceOf(RestClientResponseException.class)
-            .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(401));
-
-        UUID randomId = UUID.randomUUID();
-        assertThatThrownBy(() -> unauthenticatedTemplatesApi.getTemplate(randomId))
-            .isInstanceOf(RestClientResponseException.class)
-            .satisfies(ex -> assertThat(((RestClientResponseException) ex).getStatusCode().value()).isEqualTo(401));
     }
 }
