@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      build-docker:
+        description: 'Build Docker image'
+        required: false
+        type: boolean
+        default: true
+      push-docker:
+        description: 'Push Docker image to registry'
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  ci:
+    name: Build and Test
+    uses: CoreWebMicroservices/corems-project/.github/workflows/java-service-ci.yml@main
+    with:
+      service-name: 'template-ms'
+      java-version: '25'
+      publish-clients: true
+      build-docker: ${{ github.event_name == 'workflow_dispatch' && inputs.build-docker || true }}
+      push-docker: ${{ github.event_name == 'workflow_dispatch' && inputs.push-docker || (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+      docker-registry: 'ghcr.io'
+    secrets:
+      github-token: ${{ secrets.PACKAGES_TOKEN || secrets.GITHUB_TOKEN }}
+      docker-password: ${{ secrets.GITHUB_TOKEN }}
